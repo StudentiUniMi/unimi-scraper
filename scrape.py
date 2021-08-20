@@ -1,4 +1,5 @@
 import requests
+import json
 from bs4 import BeautifulSoup as bs
 
 TRIENNALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-triennali-e-magistrali-ciclo-unico"
@@ -21,18 +22,28 @@ DIPARTIMENTI = {
 }
 
 # triennale
+cdl_triennale = []
+
 resp = requests.get(TRIENNALE)
 data = bs(resp.text, "lxml").find(class_="view-cercacorsi").find("div", class_="view-content")
 data = data.find_all("div", class_="corso")
+
 for corso in data:
     for x in corso.div.div.div.div["class"]:
         if x.startswith("areacard"):
-            print("Dipartimento:", DIPARTIMENTI[x])
+            dip = DIPARTIMENTI[x]
+
     content = corso.div.div.div.div.div.find(class_="card-content")
-    print("Anno:", content.find(class_="anno-accademico").string)
-    print("Corso:", content.find(class_="bp-title").a.string)
-    print("URL:", "https://unimi.it" + content.find(class_="bp-title").a["href"])
-    print("Tipo:", content.find(class_="card_left").div.get_text().replace("\n", "").strip())
     content.find(class_="card_center").find(class_="sede").clear()
-    print("Lingua:", content.find(class_="card_center").get_text().replace("\n", "").strip())
-    print()
+    cdl_triennale.append({
+        "dipartimento": dip,
+        "anno": content.find(class_="anno-accademico").string,
+        "corso": content.find(class_="bp-title").a.string,
+        "sito": "https://unimi.it" + content.find(class_="bp-title").a["href"],
+        "tipo": content.find(class_="card_left").div.get_text().replace("\n", "").strip(),
+        "lingua": content.find(class_="card_center").get_text().replace("\n", "").strip()
+    })
+
+fd = open("cdl_triennale.json", "w")
+fd.write(json.dumps(cdl_triennale))
+fd.close()
