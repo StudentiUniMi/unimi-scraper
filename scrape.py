@@ -2,6 +2,27 @@ import requests
 import json
 from bs4 import BeautifulSoup as bs
 
+
+def parse_data(data):
+    result = []
+    for corso in data:
+        for x in corso.div.div.div.div["class"]:
+            if x.startswith("areacard"):
+                dip = DIPARTIMENTI[x]
+    
+        content = corso.div.div.div.div.div.find(class_="card-content")
+        content.find(class_="card_center").find(class_="sede").clear()
+        result.append({
+            "dipartimento": dip,
+            "anno": content.find(class_="anno-accademico").string,
+            "corso": content.find(class_="bp-title").a.string,
+            "sito": "https://unimi.it" + content.find(class_="bp-title").a["href"],
+            "tipo": content.find(class_="card_left").div.get_text().replace("\n", "").strip(),
+            "lingua": content.find(class_="card_center").get_text().replace("\n", "").strip()
+        })
+    return result
+    
+
 TRIENNALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-triennali-e-magistrali-ciclo-unico"
 MAGISTRALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-magistrale"
 INSEGNAMENTI = "https://www.unimi.it/it/corsi/insegnamenti-dei-corsi-di-laurea/insegnamenti-dei-corsi-di-laurea-2021-2022"
@@ -21,29 +42,30 @@ DIPARTIMENTI = {
         "areacard-K": "K",
 }
 
-# triennale
-cdl_triennale = []
 
-resp = requests.get(TRIENNALE)
-data = bs(resp.text, "lxml").find(class_="view-cercacorsi").find("div", class_="view-content")
-data = data.find_all("div", class_="corso")
+def main():
+    # triennale
+    resp = requests.get(TRIENNALE)
+    data = bs(resp.text, "lxml").find(class_="view-cercacorsi").find("div", class_="view-content")
+    data = data.find_all("div", class_="corso")
+    
+    cdl_triennale = parse_data(data)
+    
+    fd = open("cdl_triennale.json", "w")
+    fd.write(json.dumps(cdl_triennale))
+    fd.close()
+    
+    # magistrale
+    resp = requests.get(MAGISTRALE)
+    data = bs(resp.text, "lxml").find(class_="view-cercacorsi").find("div", class_="view-content")
+    data = data.find_all("div", class_="corso")
 
-for corso in data:
-    for x in corso.div.div.div.div["class"]:
-        if x.startswith("areacard"):
-            dip = DIPARTIMENTI[x]
+    cdl_magistrale = parse_data(data)
 
-    content = corso.div.div.div.div.div.find(class_="card-content")
-    content.find(class_="card_center").find(class_="sede").clear()
-    cdl_triennale.append({
-        "dipartimento": dip,
-        "anno": content.find(class_="anno-accademico").string,
-        "corso": content.find(class_="bp-title").a.string,
-        "sito": "https://unimi.it" + content.find(class_="bp-title").a["href"],
-        "tipo": content.find(class_="card_left").div.get_text().replace("\n", "").strip(),
-        "lingua": content.find(class_="card_center").get_text().replace("\n", "").strip()
-    })
+    fd = open("cdl_magistrale.json", "w")
+    fd.write(json.dumps(cdl_magistrale))
+    fd.close()
 
-fd = open("cdl_triennale.json", "w")
-fd.write(json.dumps(cdl_triennale))
-fd.close()
+
+if __name__ == "__main__":
+    main()
