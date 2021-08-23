@@ -49,9 +49,65 @@ def get_dipartimento(link):
     return dip
 
 
+def get_insegnamenti():
+    params = (
+        ('_wrapper_format', 'drupal_ajax'),
+    )
+    
+    data_req = {
+      'page': 0,
+      'title': '',
+      'uof_lingua_target_id': 'All',
+      'uof_ssd_target_id': 'All',
+      'view_name': 'w4_af',
+      'view_display_id': 'block_5',
+      'view_args': '2022',
+      'view_path': '/node/41344',
+      'view_base_path': '',
+      'view_dom_id': '8ec2ef8e824c1d7311a41f68f678bc736369e463afb055b3ae3ba04a78ab0739',
+      'pager_element': '0',
+      '_drupal_ajax': '1',
+      'ajax_page_state[theme]': 'unimi',
+    }
+
+    result = {}
+    itera = 0
+    
+    while(True):
+        data_req["page"] = itera
+        resp = requests.post(INSEGNAMENTI, params=params, data=data_req)
+        
+        data = bs(resp.json()[4]["data"], "lxml")
+        data = data.find("tbody")
+        if data is None:
+            break
+        for row in data.find_all("tr", class_="bottom10"):
+            inner = row.find("td", class_="views-field-view")
+            profs = []
+            for x in inner.div.find_all("div", class_="views-row"):
+                try:
+                    for y in x.find("div", class_="views-field-uof-persons").div.find_all("a"):
+                        profs.append(y.string.strip())
+                except Exception:
+                    pass
+        
+            ins = row.find("td", class_="views-field-title").a.string.strip()
+            course = {
+                    "profs": profs,
+                    "lingua": row.find("td", class_="views-field-uof-lingua").string.strip(),
+                    "cfu": row.find("td", class_="views-field-cfu").string.strip()
+            }
+            try:
+                result[ins]["profs"] = list(set(result[ins]["profs"] + course["profs"]))
+            except Exception:
+                result[ins] = course
+        itera += 1
+    return result
+
+
 TRIENNALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-triennali-e-magistrali-ciclo-unico"
 MAGISTRALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-magistrale"
-INSEGNAMENTI = "https://www.unimi.it/it/corsi/insegnamenti-dei-corsi-di-laurea/insegnamenti-dei-corsi-di-laurea-2021-2022"
+INSEGNAMENTI = "https://www.unimi.it/it/views/ajax"
 
 # For now each faculty is mapped this way 'cause I can't be bothered to properly extract data from an external CSS
 FACOLTA = {
@@ -96,6 +152,10 @@ def main():
     fd.write(json.dumps(cdl_magistrale))
     fd.close()
 
+    # insegnamenti
+    fd = open("insegnamenti.json", "w")
+    fd.write(json.dumps(get_insegnamenti()))
+    fd.close()
 
 if __name__ == "__main__":
     main()
