@@ -70,7 +70,7 @@ def get_insegnamenti():
       'ajax_page_state[theme]': 'unimi',
     }
 
-    result = {}
+    result = []
     itera = 0
     
     while(True):
@@ -91,16 +91,15 @@ def get_insegnamenti():
                 except Exception:
                     pass
         
-            ins = row.find("td", class_="views-field-title").a.string.strip()
+            title = row.find("td", class_="views-field-title").a
             course = {
+                    "title": title.string.strip(),
+                    "slug": title["href"].split("/")[-1].strip(),
                     "profs": profs,
                     "lingua": row.find("td", class_="views-field-uof-lingua").string.strip(),
                     "cfu": row.find("td", class_="views-field-cfu").string.strip()
             }
-            try:
-                result[ins]["profs"] = list(set(result[ins]["profs"] + course["profs"]))
-            except Exception:
-                result[ins] = course
+            result.append(course)
         itera += 1
     return result
 
