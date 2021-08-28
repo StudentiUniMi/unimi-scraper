@@ -19,18 +19,18 @@ def parse_data(data):
             dip = None
 
         result.append({
-            "facolta": fac,
-            "dipartimento": get_dipartimento(dip),
-            "anno": content.find(class_="anno-accademico").string,
-            "corso": content.find(class_="bp-title").a.string,
-            "sito": "https://unimi.it" + content.find(class_="bp-title").a["href"],
-            "tipo": content.find(class_="card_left").div.get_text().replace("\n", "").strip(),
-            "lingua": content.find(class_="card_center").get_text().replace("\n", "").strip()
+            "faculty": fac,
+            "department": get_departments(dip),
+            "year": content.find(class_="anno-accademico").string,
+            "degree": content.find(class_="bp-title").a.string,
+            "site": "https://unimi.it" + content.find(class_="bp-title").a["href"],
+            "type": content.find(class_="card_left").div.get_text().replace("\n", "").strip(),
+            "language": content.find(class_="card_center").get_text().replace("\n", "").strip()
         })
     return result
 
 
-def get_dipartimento(link):
+def get_departments(link):
     if link is None:
         return ""
     resp = requests.get(
@@ -49,7 +49,7 @@ def get_dipartimento(link):
     return dip
 
 
-def get_insegnamenti():
+def get_courses():
     params = (
         ('_wrapper_format', 'drupal_ajax'),
     )
@@ -75,7 +75,7 @@ def get_insegnamenti():
     
     while(True):
         data_req["page"] = itera
-        resp = requests.post(INSEGNAMENTI, params=params, data=data_req)
+        resp = requests.post(COURSES, params=params, data=data_req)
         
         data = bs(resp.json()[4]["data"], "lxml")
         data = data.find("tbody")
@@ -96,7 +96,7 @@ def get_insegnamenti():
                     "title": title.string.strip(),
                     "slug": title["href"].split("/")[-1].strip(),
                     "profs": profs,
-                    "lingua": row.find("td", class_="views-field-uof-lingua").string.strip(),
+                    "language": row.find("td", class_="views-field-uof-lingua").string.strip(),
                     "cfu": row.find("td", class_="views-field-cfu").string.strip()
             }
             result.append(course)
@@ -106,7 +106,7 @@ def get_insegnamenti():
 
 TRIENNALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-triennali-e-magistrali-ciclo-unico"
 MAGISTRALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-magistrale"
-INSEGNAMENTI = "https://www.unimi.it/it/views/ajax"
+COURSES = "https://www.unimi.it/it/views/ajax"
 
 # For now each faculty is mapped this way 'cause I can't be bothered to properly extract data from an external CSS
 FACOLTA = {
@@ -151,9 +151,9 @@ def main():
     fd.write(json.dumps(cdl_magistrale))
     fd.close()
 
-    # insegnamenti
-    fd = open("insegnamenti.json", "w")
-    fd.write(json.dumps(get_insegnamenti()))
+    # courses
+    fd = open("courses.json", "w")
+    fd.write(json.dumps(get_courses()))
     fd.close()
 
 if __name__ == "__main__":
