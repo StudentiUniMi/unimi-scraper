@@ -1,6 +1,7 @@
 import json
 import requests
 from bs4 import BeautifulSoup as bs
+import time
 
 
 class Degree():
@@ -185,6 +186,43 @@ def remove_duplicates(all_courses):
     return no_duplicates
 
 
+# Funzione da documentare ma non ho voglia ora
+def editions_profs(url):
+    data = requests.get(url).text
+    soup = bs(data, "lxml")
+    #period = soup.find("div", class_ = "views-field views-field-nothing").find("p").text.strip()[8:].strip()
+    divs = soup.find_all("div", class_ = "views-element-container form-group")
+    editions = []
+    for div in divs:
+        h3 = div.find_all("h3")
+        if len(h3) == 0:
+            continue
+        editions = [edition.text.strip() for edition in h3 if edition["class"][0] == "js-views-accordion-group-header"]
+        break
+    try:
+        all_profs = soup.find("div", class_ = "col-sm-12 bs-region bs-region--bottom").find("div", class_ = "view-content").find_all("div", class_ = "bottom10")
+    except:
+        return []
+    else:
+        profs = []
+        for prof in all_profs:
+            name = prof.find("div", class_ = "field-content icon rubrica").find("a").text.strip()
+            profs.append(name)
+        results = []
+        for edition in editions:
+            # Metti anche la parte dove si estrae il link per il tizio
+            try:
+                resp = edition.find("div", class_ = "field field--name-uof-person field--type-entity-reference field--label-inline").find("div", class_ = "field--item").text.strip()
+            except:
+                resp = ""
+            results.append({
+                "edition" : edition,
+                "responsible" : resp,
+                "profs" : profs
+            })
+        return results
+
+
 def parser(LINK):
     # Faccio la richiesta alla pagina principale con tutti i CdL
     data = requests.get(LINK).text
@@ -194,6 +232,7 @@ def parser(LINK):
     # Salvo ogni CdL con i relativi insegnamenti in una lista
     results = []
     
+    totali = 0
     # Eseguo il parse di ogni CdL
     for degree in degrees:
         print(degree.name)
@@ -208,7 +247,10 @@ def parser(LINK):
                 "curriculums" : ""
             }
             results.append(degree)
+            print()
             continue
+        counter = 0
+        start = time.time()
         # Faccio la richiesta alla pagina del CdL
         data = requests.get(degree.link).text
         soup = bs(data, "lxml")
@@ -262,11 +304,14 @@ def parser(LINK):
                         else:
                             continue
                         try:
+                            link = HOME + course.find("a")["href"]
+                        except:
+                            continue
+                        try:
                             # Forzo l'estrazione degli elementi che mi interessano
                             # In ogni caso viene fatto perchè viene fatto un raise di una Exception senza motivo
                             # Infatti appena viene catturata l'eccezione si ha il pass
                             name = course.find("a").text
-                            link = HOME + course.find("a")["href"]
                             cfu = course.find("td", attrs = {"data-title" : "Crediti"}).text
                             lang = course.find("td", attrs = {"data-title" : "Lingua"}).text
                         except:
@@ -278,6 +323,7 @@ def parser(LINK):
                         index = link[::-1].find("/")
                         slug = link[::-1][:index][::-1].replace("-", "_")
                         # Creo l'elemento che identifica un insegnamento
+                        #print(f"\n\t{name}")
                         course = {
                             "name" : name,
                             "slug" : slug,
@@ -287,14 +333,11 @@ def parser(LINK):
                             "complementary": False if course_type in OBBLIGATORIO else True,
                             "cfu" : cfu,
                             "lang" : lang,
-                            "editions" : [
-                                {
-                                    "n_edition" : "",
-                                    "profs" : []
-                                }
-                            ]
+                            "editions" : editions_profs(link)
                         }
+                        #print(course)
                         # Metto l'elemento nella lista di tutti gli insegnamenti
+                        counter += 1
                         all_courses.append(course)
             # Vado a rimuovere i duplicati, o meglio, gli insegnamenti che sono su più anni (solo pochi CdL hanno sta roba)
             no_duplicates = remove_duplicates(all_courses)
@@ -309,14 +352,19 @@ def parser(LINK):
         index = degree.link[::-1].find("/")
         slug = degree.link[::-1][:index][::-1].replace("-", "_")
         # Creo l'elemento che identifica un CdL
-        degree = {
+        degree_object = {
             "name" : degree.name,
             "slug" : slug,
             "link" : degree.link,
             "curriculums" : all_curriculums
         }
         # Metto l'elemento nella lista di tutti i CdL
-        results.append(degree)
+        results.append(degree_object)
+        end = time.time()
+        print(f"Per {degree.name} ci ho impiegato {end - start} secondi")
+        print(f"Sono stati analizzati {counter} insegnamenti\n")
+        totali += counter
+    print(f"Sono stati analizzati {totali} insegnamenti totali\n")
     return results
 
 
@@ -325,11 +373,17 @@ def main():
     MAGISTRALE = "https://www.unimi.it/it/corsi/corsi-di-laurea-magistrale"
 
     ft = open("insegnamenti_per_cdl_triennale.json", "w")
+    start = time.time()
     ft.write(json.dumps(parser(TRIENNALE)))
+    end = time.time()
+    print(f"Per i corsi triennali ci ho messo {end - start} secondi\n")
     ft.close()
 
     ft = open("insegnamenti_per_cdl_magistrale.json", "w")
+    start = time.time()
     ft.write(json.dumps(parser(MAGISTRALE)))
+    end = time.time()
+    print(f"Per i corsi magistrali ci ho messo {end - start} secondi\n")
     ft.close()
 
 
