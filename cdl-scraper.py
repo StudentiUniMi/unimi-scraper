@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup as bs
 import time
 
 
-class Degree():
+class Degree:
     def __init__(self, name, link):
         self.name = name
         self.link = link
@@ -13,60 +13,66 @@ class Degree():
 HOME = "https://www.unimi.it"
 
 PERIODS = {
-    "" : 0,
-    "Periodo non definito" : 0,
-    "Periodo non specificato" : 0,
-    "Primo semestre" : 1,
-    "Primo trimestre" : 1,
-    "Primo quadrimestre" : 1,
-    "Secondo semestre" : 2,
-    "Secondo trimestre" : 2,
-    "Secondo quadrimestre" : 2,
-    "Secondo annuale" : 2,
-    "Terzo trimestre" : 3,
-    "Terzo quadrimestre" : 3,
-    "Su più periodi" : 4,
-    "annuale" : 4,
+    "": 0,
+    "Periodo non definito": 0,
+    "Periodo non specificato": 0,
+    "Primo semestre": 1,
+    "Primo trimestre": 1,
+    "Primo quadrimestre": 1,
+    "Secondo semestre": 2,
+    "Secondo trimestre": 2,
+    "Secondo quadrimestre": 2,
+    "Secondo annuale": 2,
+    "Terzo trimestre": 3,
+    "Terzo quadrimestre": 3,
+    "Su più periodi": 4,
+    "annuale": 4,
 }
 
 PERIOD_TYPES = {
-    "semestre" : "Semestre",
-    "trimestre" : "Trimestre",
-    "quadrimestre" : "Quadrimestre"
+    "semestre": "Semestre",
+    "trimestre": "Trimestre",
+    "quadrimestre": "Quadrimestre",
 }
 
 YEARS = {
-    "Anno: 1" : 1,
-    "Anno: 2" : 2,
-    "Anno: 3" : 3,
-    "Anno: 4" : 4,
-    "Anno: 5" : 5,
-    "Anno: 6" : 6,
-    "Anno di corso a scelta dello studente" : -2
+    "Anno: 1": 1,
+    "Anno: 2": 2,
+    "Anno: 3": 3,
+    "Anno: 4": 4,
+    "Anno: 5": 5,
+    "Anno: 6": 6,
+    "Anno di corso a scelta dello studente": -2,
 }
 
 OBBLIGATORIO = ["Obbligatorio", "Insegnamenti obbligatori"]
 
 DIV = {
-    "ugov-of-pd-special-i" : "Obbligatorio",
-    "ugov-of-pd-rules" : "x",
-    "ugov-of-pd-special-f": ""
+    "ugov-of-pd-special-i": "Obbligatorio",
+    "ugov-of-pd-rules": "x",
+    "ugov-of-pd-special-f": "",
 }
 
 SPECIALS = [
     "Progettazione delle aree verdi e del paesaggio - Interateneo",
     "Scienze viticole ed enologiche - Interateneo",
-    "Artificial Intelligence"
+    "Artificial Intelligence",
 ]
 
 
 def get_tables(soup):
     # Estraggo il div che contiene le tabelle con i corsi
-    div = soup.find("div", class_ = "field field--name-ugov-piano-didattico field--type-map field--label-hidden field--item")
+    div = soup.find(
+        "div",
+        class_="field field--name-ugov-piano-didattico field--type-map field--label-hidden field--item",
+    )
     # Estraggo i curriculum dai toggle presenti; vanno esclusi i toggle che danno indicazioni sulle propedeuticità
     curriculums = [
-        a.text.strip() for a in div.find_all("a", attrs = {"data-toggle" : "collapse", "data-parent" : "#curr-accordion"})
-            if a.text.strip() != "Propedeuticità del curriculum"
+        a.text.strip()
+        for a in div.find_all(
+            "a", attrs={"data-toggle": "collapse", "data-parent": "#curr-accordion"}
+        )
+        if a.text.strip() != "Propedeuticità del curriculum"
     ]
     # Se ho un solo curriculum allora va denominato come "Curriculum unico"
     if len(curriculums) == 1:
@@ -75,7 +81,7 @@ def get_tables(soup):
         for s in range(len(curriculums)):
             curriculums[s] = curriculums[s][12:]
     # Estraggo tutte le tabelle presenti nel div
-    all_tables = div.find_all("div", class_ = "panel-body")
+    all_tables = div.find_all("div", class_="panel-body")
     tables = []
     # Se ho una sola tabella non devo parsare altro; se le due tabelle hanno stessa lunghezza va bene lo stesso
     # Altrimenti vanno tolte le tabelle che indicano una propedeuticità
@@ -85,7 +91,7 @@ def get_tables(soup):
         tables = all_tables
     else:
         for table in all_tables:
-            if table.find("div", class_ = "panel-body") != None:
+            if table.find("div", class_="panel-body") != None:
                 tables.append(table)
     return tables, curriculums
 
@@ -94,7 +100,7 @@ def get_table_contents(table):
     # Estraggo dalla navbar le indicazioni sugli anni
     # Metto un try-except perchè alcuni corsi della magistrale non hanno la navbar con le indicazioni sui periodi
     try:
-        ul = table.find("ul", class_ = "nav nav-tabs ugov-of-pd-years").find_all("li")
+        ul = table.find("ul", class_="nav nav-tabs ugov-of-pd-years").find_all("li")
     except:
         # In caso di assenza della navbar, estraggo i div con una classe diversa
         all_table_contents = [special_div for special_div in table.find_all("div")]
@@ -110,11 +116,16 @@ def get_table_contents(table):
                 if div_class in DIV.keys():
                     table_contents.append(special_div)
         # L'anno lo metto come a scelta dello studente
-        years = ["Anno di corso a scelta dello studente" for i in range(len(table_contents))]
+        years = [
+            "Anno di corso a scelta dello studente" for i in range(len(table_contents))
+        ]
     else:
         years = [year.text.lstrip().rstrip() for year in ul]
         # Estraggo tutti i div che contengono la tabella principale per ogni anno
-        all_table_contents = [content for content in table.find("div", class_ = "tab-content").find_all("div")]
+        all_table_contents = [
+            content
+            for content in table.find("div", class_="tab-content").find_all("div")
+        ]
         table_contents = []
         # Devo rimuovere i div che non mi servono: sono quelli che non hanno un attributo class
         for x in all_table_contents:
@@ -132,16 +143,16 @@ def get_table_contents(table):
 
 def get_subtables(content):
     # Estraggo le tabelle relative a ogni periodo
-    subtables = content.find_all("table", class_ = "no-more-tables")
+    subtables = content.find_all("table", class_="no-more-tables")
     # Il periodo dell'anno è contenuto dei div don class "top30 titoletto"
-    periods = content.find_all("div", class_ = "top30 titoletto")
+    periods = content.find_all("div", class_="top30 titoletto")
     # Se non ho estratto niente vuol dire che sono nei corsi speciali della magistrale
     # La lista verrà riempita di sole x, il motivo è spiegato più avanti
     if len(periods) == 0:
         periods = ["x" for i in range(len(subtables))]
     else:
         # Elimino possibili tabelle che non hanno un div con class "top30 titoletto"
-        subtables = subtables[:len(periods)]
+        subtables = subtables[: len(periods)]
         # Ripulisco eventuali spazi a destra e a sinistra del testo nel tag
         for p in range(len(periods)):
             periods[p] = periods[p].text.strip()
@@ -149,7 +160,9 @@ def get_subtables(content):
         # Estraggo ora dei div che contengono sempre dei corsi complementari
         # Uso un try-except poichè questi div non sono sempre presenti
         try:
-            complementary = content.find("div", class_ = "top30 ugov-of-pd-rules").find_all("table", class_ = "no-more-tables")
+            complementary = content.find(
+                "div", class_="top30 ugov-of-pd-rules"
+            ).find_all("table", class_="no-more-tables")
             # assert len(complementary) < 2 VERIFICATO METTENDO FIND_ALL AL POSTO DI FIND E SENZA IL SECONDO FIND_ALL
         except:
             pass
@@ -167,16 +180,19 @@ def get_subtables(content):
 def remove_duplicates(all_courses):
     no_duplicates = []
     visited = []
-    for c in range(len(all_courses)-1):
+    for c in range(len(all_courses) - 1):
         current_course = all_courses[c]
         # Se il nome dell'insegnamento è già stato analizzato passo al successivo
         if current_course["name"] in visited:
             continue
         # Dichiaro la lista che conterrà tutti gli anni
         all_periods = [current_course["year"]]
-        for d in range(c+1, len(all_courses)):
+        for d in range(c + 1, len(all_courses)):
             # Se ho stesso nome e l'anno non è ancora stato trovato vado a mettere l'anno tra quelli possibili
-            if current_course["name"] == all_courses[d]["name"] and all_courses[d]["year"] not in all_periods:
+            if (
+                current_course["name"] == all_courses[d]["name"]
+                and all_courses[d]["year"] not in all_periods
+            ):
                 all_periods.append(all_courses[d]["year"])
         current_course["year"] = all_periods if len(all_periods) > 1 else all_periods[0]
         # Metto il corso sistemato nella nuova vista
@@ -190,48 +206,63 @@ def remove_duplicates(all_courses):
 def editions_profs(url):
     data = requests.get(url).text
     soup = bs(data, "lxml")
-    #period = soup.find("div", class_ = "views-field views-field-nothing").find("p").text.strip()[8:].strip()
-    divs = soup.find_all("div", class_ = "views-element-container form-group")
+    # period = soup.find("div", class_ = "views-field views-field-nothing").find("p").text.strip()[8:].strip()
+    divs = soup.find_all("div", class_="views-element-container form-group")
     editions = []
     for div in divs:
         h3 = div.find_all("h3")
         if len(h3) == 0:
             continue
-        editions = [edition.text.strip() for edition in h3 if edition["class"][0] == "js-views-accordion-group-header"]
+        editions = [
+            edition.text.strip()
+            for edition in h3
+            if edition["class"][0] == "js-views-accordion-group-header"
+        ]
         break
     try:
-        all_profs = soup.find("div", class_ = "col-sm-12 bs-region bs-region--bottom").find("div", class_ = "view-content").find_all("div", class_ = "bottom10")
+        all_profs = (
+            soup.find("div", class_="col-sm-12 bs-region bs-region--bottom")
+            .find("div", class_="view-content")
+            .find_all("div", class_="bottom10")
+        )
     except:
         return []
     else:
         profs = []
         for prof in all_profs:
-            name = prof.find("div", class_ = "field-content icon rubrica").find("a").text.strip()
+            name = (
+                prof.find("div", class_="field-content icon rubrica")
+                .find("a")
+                .text.strip()
+            )
             profs.append(name)
         results = []
         for edition in editions:
             # Metti anche la parte dove si estrae il link per il tizio
             try:
-                resp = edition.find("div", class_ = "field field--name-uof-person field--type-entity-reference field--label-inline").find("div", class_ = "field--item").text.strip()
+                resp = (
+                    edition.find(
+                        "div",
+                        class_="field field--name-uof-person field--type-entity-reference field--label-inline",
+                    )
+                    .find("div", class_="field--item")
+                    .text.strip()
+                )
             except:
                 resp = ""
-            results.append({
-                "edition" : edition,
-                "responsible" : resp,
-                "profs" : profs
-            })
+            results.append({"edition": edition, "responsible": resp, "profs": profs})
         return results
 
 
 def parser(LINK):
     # Faccio la richiesta alla pagina principale con tutti i CdL
     data = requests.get(LINK).text
-    soup = bs(data, "lxml").find_all("a", hreflang = "it")
+    soup = bs(data, "lxml").find_all("a", hreflang="it")
 
     degrees = [Degree(link.text.strip(), HOME + link["href"]) for link in soup][1:]
     # Salvo ogni CdL con i relativi insegnamenti in una lista
     results = []
-    
+
     totali = 0
     # Eseguo il parse di ogni CdL
     for degree in degrees:
@@ -241,10 +272,10 @@ def parser(LINK):
             index = degree.link[::-1].find("/")
             slug = degree.link[::-1][:index][::-1].replace("-", "_")
             degree = {
-                "name" : degree.name,
-                "slug" : slug,
-                "link" : degree.link,
-                "curriculums" : ""
+                "name": degree.name,
+                "slug": slug,
+                "link": degree.link,
+                "curriculums": "",
             }
             results.append(degree)
             print()
@@ -254,7 +285,7 @@ def parser(LINK):
         # Faccio la richiesta alla pagina del CdL
         data = requests.get(degree.link).text
         soup = bs(data, "lxml")
-        
+
         # Estraggo tabelle e curriculum
         tables, curriculums = get_tables(soup)
         # Creo una lista che conterrà tutti i curriculum
@@ -268,11 +299,11 @@ def parser(LINK):
 
             # Estraggo il contenuto delle tabelle e gli anni
             table_contents, years = get_table_contents(table)
-            
+
             # Lavoro con un indice per avere gestione parallela sulle liste table_contents e years
             for t in range(len(table_contents)):
                 content = table_contents[t]
-                
+
                 # Estraggo subtables e periods
                 subtables, periods = get_subtables(content)
                 # Da ogni tabella estraggo tutti i td
@@ -298,7 +329,7 @@ def parser(LINK):
                         try:
                             # Forzo l'estrazione: se va a buon fine ho estratto il tipo del corso
                             # Se ha esito negativo allora è un corso e si deve far riferimento al tipo scritto in precedenza
-                            course_type = course.find("td", colspan = "5").text
+                            course_type = course.find("td", colspan="5").text
                         except:
                             pass
                         else:
@@ -312,30 +343,46 @@ def parser(LINK):
                             # In ogni caso viene fatto perchè viene fatto un raise di una Exception senza motivo
                             # Infatti appena viene catturata l'eccezione si ha il pass
                             name = course.find("a").text
-                            cfu = course.find("td", attrs = {"data-title" : "Crediti"}).text
-                            lang = course.find("td", attrs = {"data-title" : "Lingua"}).text
+                            cfu = course.find(
+                                "td", attrs={"data-title": "Crediti"}
+                            ).text
+                            lang = course.find(
+                                "td", attrs={"data-title": "Lingua"}
+                            ).text
                         except:
                             pass
                         # Se la prova finale (tesi) e i tirocini sono in altre tabelle diverse da "Attività conclusive" le vado a escludere
-                        if name == "Prova finale" or "Tirocinio" in name or "tirocinio" in name or "Stage" in name or "stage" in name:
+                        if (
+                            name == "Prova finale"
+                            or "Tirocinio" in name
+                            or "tirocinio" in name
+                            or "Stage" in name
+                            or "stage" in name
+                        ):
                             continue
                         # Estraggo lo slug prendendo la parte finale di ogni link e facendo il replace di - con _
                         index = link[::-1].find("/")
                         slug = link[::-1][:index][::-1].replace("-", "_")
                         # Creo l'elemento che identifica un insegnamento
-                        #print(f"\n\t{name}")
+                        # print(f"\n\t{name}")
                         course = {
-                            "name" : name,
-                            "slug" : slug,
-                            "link" : link,
-                            "year" : YEARS[years[t]],
-                            "period" : PERIODS[periods[k]] if periods[k] in list(PERIODS.keys()) else PERIODS[course.find("td", attrs = {"data-title" : "Periodo"}).text],
-                            "complementary": False if course_type in OBBLIGATORIO else True,
-                            "cfu" : cfu,
-                            "lang" : lang,
-                            "editions" : editions_profs(link)
+                            "name": name,
+                            "slug": slug,
+                            "link": link,
+                            "year": YEARS[years[t]],
+                            "period": PERIODS[periods[k]]
+                            if periods[k] in list(PERIODS.keys())
+                            else PERIODS[
+                                course.find("td", attrs={"data-title": "Periodo"}).text
+                            ],
+                            "complementary": False
+                            if course_type in OBBLIGATORIO
+                            else True,
+                            "cfu": cfu,
+                            "lang": lang,
+                            "editions": editions_profs(link),
                         }
-                        #print(course)
+                        # print(course)
                         # Metto l'elemento nella lista di tutti gli insegnamenti
                         counter += 1
                         all_courses.append(course)
@@ -343,8 +390,10 @@ def parser(LINK):
             no_duplicates = remove_duplicates(all_courses)
             # Creo l'elemento che identifica un curriculum
             curriculum = {
-                "name" : curriculums[i],
-                "courses" : no_duplicates if len(no_duplicates) > 1 else no_duplicates[0]
+                "name": curriculums[i],
+                "courses": no_duplicates
+                if len(no_duplicates) > 1
+                else no_duplicates[0],
             }
             # Metto l'elemento nella lista di tutti i curriculum
             all_curriculums.append(curriculum)
@@ -353,10 +402,10 @@ def parser(LINK):
         slug = degree.link[::-1][:index][::-1].replace("-", "_")
         # Creo l'elemento che identifica un CdL
         degree_object = {
-            "name" : degree.name,
-            "slug" : slug,
-            "link" : degree.link,
-            "curriculums" : all_curriculums
+            "name": degree.name,
+            "slug": slug,
+            "link": degree.link,
+            "curriculums": all_curriculums,
         }
         # Metto l'elemento nella lista di tutti i CdL
         results.append(degree_object)
